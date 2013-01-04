@@ -16,13 +16,16 @@
 
 package com.actionbarsherlock.widget;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.List;
+import java.util.WeakHashMap;
+
 import android.app.SearchManager;
 import android.app.SearchableInfo;
-import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.Context;
-import android.content.pm.ActivityInfo;
-import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
@@ -42,13 +45,8 @@ import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
-import com.actionbarsherlock.R;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.List;
-import java.util.WeakHashMap;
+import com.actionbarsherlock.R;
 
 /**
  * Provides the contents for the suggestion drop-down list.
@@ -65,7 +63,6 @@ class SuggestionsAdapter extends ResourceCursorAdapter implements OnClickListene
     static final int REFINE_BY_ENTRY = 1;
     static final int REFINE_ALL = 2;
 
-    private SearchManager mSearchManager;
     private SearchView mSearchView;
     private Context mProviderContext;
     private WeakHashMap<String, Drawable.ConstantState> mOutsideDrawablesCache;
@@ -99,7 +96,6 @@ class SuggestionsAdapter extends ResourceCursorAdapter implements OnClickListene
             R.layout.abs__search_dropdown_item_icons_2line,
             null,   // no initial cursor
             true);  // auto-requery
-        mSearchManager = (SearchManager) mContext.getSystemService(Context.SEARCH_SERVICE);
         mProviderContext = mContext;
         mSearchView = searchView;
 
@@ -650,58 +646,6 @@ class SuggestionsAdapter extends ResourceCursorAdapter implements OnClickListene
     private Drawable getDefaultIcon1(Cursor cursor) {
         // Fall back to a default icon
         return mContext.getPackageManager().getDefaultActivityIcon();
-    }
-
-    /**
-     * Gets the activity or application icon for an activity.
-     * Uses the local icon cache for fast repeated lookups.
-     *
-     * @param component Name of an activity.
-     * @return A drawable, or {@code null} if neither the activity nor the application
-     *         has an icon set.
-     */
-    private Drawable getActivityIconWithCache(ComponentName component) {
-        // First check the icon cache
-        String componentIconKey = component.flattenToShortString();
-        // Using containsKey() since we also store null values.
-        if (mOutsideDrawablesCache.containsKey(componentIconKey)) {
-            Drawable.ConstantState cached = mOutsideDrawablesCache.get(componentIconKey);
-            return cached == null ? null : cached.newDrawable(mProviderContext.getResources());
-        }
-        // Then try the activity or application icon
-        Drawable drawable = getActivityIcon(component);
-        // Stick it in the cache so we don't do this lookup again.
-        Drawable.ConstantState toCache = drawable == null ? null : drawable.getConstantState();
-        mOutsideDrawablesCache.put(componentIconKey, toCache);
-        return drawable;
-    }
-
-    /**
-     * Gets the activity or application icon for an activity.
-     *
-     * @param component Name of an activity.
-     * @return A drawable, or {@code null} if neither the acitivy or the application
-     *         have an icon set.
-     */
-    private Drawable getActivityIcon(ComponentName component) {
-        PackageManager pm = mContext.getPackageManager();
-        final ActivityInfo activityInfo;
-        try {
-            activityInfo = pm.getActivityInfo(component, PackageManager.GET_META_DATA);
-        } catch (NameNotFoundException ex) {
-            Log.w(LOG_TAG, ex.toString());
-            return null;
-        }
-        int iconId = activityInfo.getIconResource();
-        if (iconId == 0) return null;
-        String pkg = component.getPackageName();
-        Drawable drawable = pm.getDrawable(pkg, iconId, activityInfo.applicationInfo);
-        if (drawable == null) {
-            Log.w(LOG_TAG, "Invalid icon resource " + iconId + " for "
-                    + component.flattenToShortString());
-            return null;
-        }
-        return drawable;
     }
 
     /**
